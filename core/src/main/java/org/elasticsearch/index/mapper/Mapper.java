@@ -93,10 +93,12 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
             private final Version indexVersionCreated;
 
             private final ParseFieldMatcher parseFieldMatcher;
+            
+            private final boolean parsingPartialData;
 
             public ParserContext(String type, AnalysisService analysisService, SimilarityLookupService similarityLookupService,
                                  MapperService mapperService, Map<String, TypeParser> typeParsers,
-                                 Version indexVersionCreated, ParseFieldMatcher parseFieldMatcher) {
+                                 Version indexVersionCreated, ParseFieldMatcher parseFieldMatcher, boolean parsingPartialData) {
                 this.type = type;
                 this.analysisService = analysisService;
                 this.similarityLookupService = similarityLookupService;
@@ -104,6 +106,7 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
                 this.typeParsers = typeParsers;
                 this.indexVersionCreated = indexVersionCreated;
                 this.parseFieldMatcher = parseFieldMatcher;
+                this.parsingPartialData = parsingPartialData;
             }
 
             public String type() {
@@ -134,6 +137,10 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
                 return parseFieldMatcher;
             }
 
+            public boolean parsingPartialData() {
+                return parsingPartialData;
+            }
+
             public boolean isWithinMultiField() { return false; }
 
             protected Map<String, TypeParser> typeParsers() { return typeParsers; }
@@ -147,7 +154,7 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
 
             static class MultiFieldParserContext extends ParserContext {
                 MultiFieldParserContext(ParserContext in) {
-                    super(in.type(), in.analysisService, in.similarityLookupService(), in.mapperService(), in.typeParsers(), in.indexVersionCreated(), in.parseFieldMatcher());
+                    super(in.type(), in.analysisService(), in.similarityLookupService(), in.mapperService(), in.typeParsers(), in.indexVersionCreated(), in.parseFieldMatcher(), in.parsingPartialData());
                 }
             }
 

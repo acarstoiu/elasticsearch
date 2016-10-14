@@ -96,7 +96,11 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
          * if a shard was moved to a different node or for administrative
          * purposes.
          */
-        MAPPING_RECOVERY;
+        MAPPING_RECOVERY,
+        /**
+         * Validation of mappings placed in templates.
+         */
+        TEMPLATE_MAPPING_VALIDATION;
     }
 
     public static final String DEFAULT_MAPPING = "_default_";
@@ -270,12 +274,16 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         }
     }
 
-    //TODO: make this atomic
     public void merge(Map<String, Map<String, Object>> mappings, boolean updateAllTypes) throws MapperParsingException {
+        merge(mappings, updateAllTypes, MergeReason.MAPPING_UPDATE);
+    }
+
+    //TODO: make this atomic
+    public void merge(Map<String, Map<String, Object>> mappings, boolean updateAllTypes, MergeReason reason) throws MapperParsingException {
         // first, add the default mapping
         if (mappings.containsKey(DEFAULT_MAPPING)) {
             try {
-                this.merge(DEFAULT_MAPPING, new CompressedXContent(XContentFactory.jsonBuilder().map(mappings.get(DEFAULT_MAPPING)).string()), MergeReason.MAPPING_UPDATE, updateAllTypes);
+                this.merge(DEFAULT_MAPPING, new CompressedXContent(XContentFactory.jsonBuilder().map(mappings.get(DEFAULT_MAPPING)).string()), reason, updateAllTypes);
             } catch (Exception e) {
                 throw new MapperParsingException("Failed to parse mapping [{}]: {}", e, DEFAULT_MAPPING, e.getMessage());
             }
@@ -286,7 +294,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
             }
             try {
                 // apply the default here, its the first time we parse it
-                this.merge(entry.getKey(), new CompressedXContent(XContentFactory.jsonBuilder().map(entry.getValue()).string()), MergeReason.MAPPING_UPDATE, updateAllTypes);
+                this.merge(entry.getKey(), new CompressedXContent(XContentFactory.jsonBuilder().map(entry.getValue()).string()), reason, updateAllTypes);
             } catch (Exception e) {
                 throw new MapperParsingException("Failed to parse mapping [{}]: {}", e, entry.getKey(), e.getMessage());
             }
@@ -316,7 +324,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
                         reason != MergeReason.MAPPING_RECOVERY
                         // only apply the default mapping if we don't have the type yet
                         && mappers.containsKey(type) == false;
-                DocumentMapper mergeWith = parse(type, mappingSource, applyDefault);
+                DocumentMapper mergeWith = parse(type, mappingSource, applyDefault, reason == MergeReason.TEMPLATE_MAPPING_VALIDATION);
                 return merge(mergeWith, reason, updateAllTypes);
             }
         }
@@ -348,7 +356,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
                 logger.warn("Type [{}] starts with a '.', it is recommended not to start a type name with a '.'", mapper.type());
             }
         }
-        if (reason == MergeReason.MAPPING_UPDATE) {
+        if (reason != MergeReason.MAPPING_RECOVERY) {
             if (mapper.timestampFieldMapper().enabled()) {
                 deprecationLogger.deprecated("[_timestamp] will be removed in 5.0. As a replacement, you should explicitly populate a date "
                         + "field with the current timestamp in your documents.");
@@ -390,7 +398,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         }
         fullPathObjectMappers = Collections.unmodifiableMap(fullPathObjectMappers);
 
-        if (reason == MergeReason.MAPPING_UPDATE) {
+        if (reason != MergeReason.MAPPING_RECOVERY) {
             checkNestedFieldsLimit(fullPathObjectMappers);
         }
 
@@ -540,13 +548,19 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
     }
 
     public DocumentMapper parse(String mappingType, CompressedXContent mappingSource, boolean applyDefault) throws MapperParsingException {
-        String defaultMappingSource;
-        if (PercolatorService.TYPE_NAME.equals(mappingType)) {
-            defaultMappingSource = this.defaultPercolatorMappingSource;
-        }  else {
-            defaultMappingSource = this.defaultMappingSource;
+        return parse(mappingType, mappingSource, applyDefault, false);
+    }
+
+    public DocumentMapper parse(String mappingType, CompressedXContent mappingSource, boolean applyDefault, boolean partialMappingData) throws MapperParsingException {
+        String defaultMappingSource = null;
+        if (applyDefault) {
+            if (PercolatorService.TYPE_NAME.equals(mappingType)) {
+                defaultMappingSource = this.defaultPercolatorMappingSource;
+            }  else {
+                defaultMappingSource = this.defaultMappingSource;
+            }
         }
-        return documentParser.parse(mappingType, mappingSource, applyDefault ? defaultMappingSource : null);
+        return documentParser.parse(mappingType, mappingSource, defaultMappingSource, partialMappingData);
     }
 
     public boolean hasMapping(String mappingType) {

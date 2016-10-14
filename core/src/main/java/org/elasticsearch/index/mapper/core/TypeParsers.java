@@ -208,18 +208,22 @@ public class TypeParsers {
             } else if (propName.equals("analyzer") || // for backcompat, reading old indexes, remove for v3.0
                     propName.equals("index_analyzer") && parserContext.indexVersionCreated().before(Version.V_2_0_0_beta1)) {
 
-                NamedAnalyzer analyzer = parserContext.analysisService().analyzer(propNode.toString());
-                if (analyzer == null) {
-                    throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                if (!parserContext.parsingPartialData()) {
+                    NamedAnalyzer analyzer = parserContext.analysisService().analyzer(propNode.toString());
+                    if (analyzer == null) {
+                        throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                    }
+                    indexAnalyzer = analyzer;
                 }
-                indexAnalyzer = analyzer;
                 iterator.remove();
             } else if (propName.equals("search_analyzer")) {
-                NamedAnalyzer analyzer = parserContext.analysisService().analyzer(propNode.toString());
-                if (analyzer == null) {
-                    throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                if (!parserContext.parsingPartialData()) {
+                    NamedAnalyzer analyzer = parserContext.analysisService().analyzer(propNode.toString());
+                    if (analyzer == null) {
+                        throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                    }
+                    searchAnalyzer = analyzer;
                 }
-                searchAnalyzer = analyzer;
                 iterator.remove();
             }
         }

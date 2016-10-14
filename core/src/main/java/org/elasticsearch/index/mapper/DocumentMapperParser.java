@@ -77,15 +77,23 @@ public class DocumentMapperParser {
         indexVersionCreated = Version.indexCreated(indexSettings);
     }
 
+    public Mapper.TypeParser.ParserContext parserContext(String type, boolean parsingPartialData) {
+        return new Mapper.TypeParser.ParserContext(type, analysisService, similarityLookupService, mapperService, typeParsers, indexVersionCreated, parseFieldMatcher, parsingPartialData);
+    }
+
     public Mapper.TypeParser.ParserContext parserContext(String type) {
-        return new Mapper.TypeParser.ParserContext(type, analysisService, similarityLookupService, mapperService, typeParsers, indexVersionCreated, parseFieldMatcher);
+        return new Mapper.TypeParser.ParserContext(type, analysisService, similarityLookupService, mapperService, typeParsers, indexVersionCreated, parseFieldMatcher, false);
     }
 
     public DocumentMapper parse(@Nullable String type, CompressedXContent source) throws MapperParsingException {
-        return parse(type, source, null);
+        return parse(type, source, null, false);
     }
 
     public DocumentMapper parse(@Nullable String type, CompressedXContent source, String defaultSource) throws MapperParsingException {
+        return parse(type, source, defaultSource, false);
+    }
+
+    public DocumentMapper parse(@Nullable String type, CompressedXContent source, String defaultSource, boolean partialMappingData) throws MapperParsingException {
         Map<String, Object> mapping = null;
         if (source != null) {
             Map<String, Object> root = XContentHelper.convertToMap(source.compressedReference(), true).v2();
@@ -96,11 +104,11 @@ public class DocumentMapperParser {
         if (mapping == null) {
             mapping = Maps.newHashMap();
         }
-        return parse(type, mapping, defaultSource);
+        return parse(type, mapping, defaultSource, partialMappingData);
     }
 
     @SuppressWarnings({"unchecked"})
-    private DocumentMapper parse(String type, Map<String, Object> mapping, String defaultSource) throws MapperParsingException {
+    private DocumentMapper parse(String type, Map<String, Object> mapping, String defaultSource, boolean partialMappingData) throws MapperParsingException {
         if (type == null) {
             throw new MapperParsingException("Failed to derive type");
         }
@@ -112,8 +120,7 @@ public class DocumentMapperParser {
             }
         }
 
-
-        Mapper.TypeParser.ParserContext parserContext = parserContext(type);
+        Mapper.TypeParser.ParserContext parserContext = parserContext(type, partialMappingData);
         // parse RootObjectMapper
         DocumentMapper.Builder docBuilder = doc((RootObjectMapper.Builder) rootObjectTypeParser.parse(type, mapping, parserContext), mapperService);
         Iterator<Map.Entry<String, Object>> iterator = mapping.entrySet().iterator();

@@ -210,7 +210,7 @@ public class MetaDataIndexTemplateService extends AbstractComponent {
                 mappingsForValidation.put(entry.getKey(), MapperService.parseMapping(entry.getValue()));
             }
 
-            dummyIndexService.mapperService().merge(mappingsForValidation, false);
+            dummyIndexService.mapperService().merge(mappingsForValidation, false, MapperService.MergeReason.TEMPLATE_MAPPING_VALIDATION);
 
         } finally {
             if (createdIndex != null) {
