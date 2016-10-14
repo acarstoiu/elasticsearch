@@ -115,25 +115,31 @@ public class TypeParsers {
                 builder.storeTermVectorPayloads(nodeBooleanValue(name,"store_term_vector_payloads", propNode));
                 iterator.remove();
             } else if (propName.equals("analyzer")) {
-                NamedAnalyzer analyzer = parserContext.getIndexAnalyzers().get(propNode.toString());
-                if (analyzer == null) {
-                    throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                if (!parserContext.parsingPartialData()) {
+                    NamedAnalyzer analyzer = parserContext.getIndexAnalyzers().get(propNode.toString());
+                    if (analyzer == null) {
+                        throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                    }
+                    indexAnalyzer = analyzer;
                 }
-                indexAnalyzer = analyzer;
                 iterator.remove();
             } else if (propName.equals("search_analyzer")) {
-                NamedAnalyzer analyzer = parserContext.getIndexAnalyzers().get(propNode.toString());
-                if (analyzer == null) {
-                    throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                if (!parserContext.parsingPartialData()) {
+                    NamedAnalyzer analyzer = parserContext.getIndexAnalyzers().get(propNode.toString());
+                    if (analyzer == null) {
+                        throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                    }
+                    searchAnalyzer = analyzer;
                 }
-                searchAnalyzer = analyzer;
                 iterator.remove();
             } else if (propName.equals("search_quote_analyzer")) {
-                NamedAnalyzer analyzer = parserContext.getIndexAnalyzers().get(propNode.toString());
-                if (analyzer == null) {
-                    throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                if (!parserContext.parsingPartialData()) {
+                    NamedAnalyzer analyzer = parserContext.getIndexAnalyzers().get(propNode.toString());
+                    if (analyzer == null) {
+                        throw new MapperParsingException("analyzer [" + propNode.toString() + "] not found for field [" + name + "]");
+                    }
+                    searchQuoteAnalyzer = analyzer;
                 }
-                searchQuoteAnalyzer = analyzer;
                 iterator.remove();
             }
         }

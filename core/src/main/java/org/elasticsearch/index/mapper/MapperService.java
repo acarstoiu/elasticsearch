@@ -83,7 +83,11 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
          * if a shard was moved to a different node or for administrative
          * purposes.
          */
-        MAPPING_RECOVERY;
+        MAPPING_RECOVERY,
+        /**
+         * Validation of mappings placed in templates.
+         */
+        TEMPLATE_MAPPING_VALIDATION;
     }
 
     public static final String DEFAULT_MAPPING = "_default_";
@@ -293,7 +297,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
             // verify we can parse it
             // NOTE: never apply the default here
             try {
-                defaultMapper = documentParser.parse(DEFAULT_MAPPING, mappings.get(DEFAULT_MAPPING));
+                defaultMapper = documentParser.parse(DEFAULT_MAPPING, mappings.get(DEFAULT_MAPPING), reason == MergeReason.TEMPLATE_MAPPING_VALIDATION);
             } catch (Exception e) {
                 throw new MapperParsingException("Failed to parse mapping [{}]: {}", e, DEFAULT_MAPPING, e.getMessage());
             }
@@ -320,13 +324,13 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
 
             final boolean applyDefault =
                 // the default was already applied if we are recovering
-                reason != MergeReason.MAPPING_RECOVERY
+                reason == MergeReason.MAPPING_UPDATE
                     // only apply the default mapping if we don't have the type yet
                     && mappers.containsKey(type) == false;
 
             try {
                 DocumentMapper documentMapper =
-                    documentParser.parse(type, entry.getValue(), applyDefault ? defaultMappingSourceOrLastStored : null);
+                    documentParser.parse(type, entry.getValue(), applyDefault ? defaultMappingSourceOrLastStored : null, reason == MergeReason.TEMPLATE_MAPPING_VALIDATION);
                 documentMappers.add(documentMapper);
             } catch (Exception e) {
                 throw new MapperParsingException("Failed to parse mapping [{}]: {}", e, entry.getKey(), e.getMessage());
@@ -411,7 +415,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
                 }
             }
 
-            if (reason == MergeReason.MAPPING_UPDATE) {
+            if (reason != MergeReason.MAPPING_RECOVERY) {
                 // this check will only be performed on the master node when there is
                 // a call to the update mapping API. For all other cases like
                 // the master node restoring mappings from disk or data nodes
@@ -436,7 +440,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
             mappers.put(newMapper.type(), newMapper);
         }
 
-        if (reason == MergeReason.MAPPING_UPDATE) {
+        if (reason != MergeReason.MAPPING_RECOVERY) {
             // this check will only be performed on the master node when there is
             // a call to the update mapping API. For all other cases like
             // the master node restoring mappings from disk or data nodes

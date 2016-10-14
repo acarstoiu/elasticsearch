@@ -96,10 +96,13 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
             private final Version indexVersionCreated;
 
             private final Supplier<QueryShardContext> queryShardContextSupplier;
+            
+            private final boolean parsingPartialData;
 
             public ParserContext(String type, IndexAnalyzers indexAnalyzers, Function<String, SimilarityProvider> similarityLookupService,
                                  MapperService mapperService, Function<String, TypeParser> typeParsers,
-                                 Version indexVersionCreated, Supplier<QueryShardContext> queryShardContextSupplier) {
+                                 Version indexVersionCreated, Supplier<QueryShardContext> queryShardContextSupplier,
+                                 boolean parsingPartialData) {
                 this.type = type;
                 this.indexAnalyzers = indexAnalyzers;
                 this.similarityLookupService = similarityLookupService;
@@ -107,6 +110,7 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
                 this.typeParsers = typeParsers;
                 this.indexVersionCreated = indexVersionCreated;
                 this.queryShardContextSupplier = queryShardContextSupplier;
+                this.parsingPartialData = parsingPartialData;
             }
 
             public String type() {
@@ -137,6 +141,10 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
                 return queryShardContextSupplier;
             }
 
+            public boolean parsingPartialData() {
+                return parsingPartialData;
+            }
+
             public boolean isWithinMultiField() { return false; }
 
             protected Function<String, TypeParser> typeParsers() { return typeParsers; }
@@ -153,7 +161,7 @@ public abstract class Mapper implements ToXContent, Iterable<Mapper> {
             static class MultiFieldParserContext extends ParserContext {
                 MultiFieldParserContext(ParserContext in) {
                     super(in.type(), in.indexAnalyzers, in.similarityLookupService(), in.mapperService(), in.typeParsers(),
-                            in.indexVersionCreated(), in.queryShardContextSupplier());
+                            in.indexVersionCreated(), in.queryShardContextSupplier(), in.parsingPartialData());
                 }
             }
 
